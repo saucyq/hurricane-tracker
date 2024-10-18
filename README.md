@@ -11,3 +11,6 @@ status
 * DB - non-tropical Disturbance not have a closed circulation
 
 NW34/SE34  : Wind speeds of each quadrant at 34 knots (> 50 mph).
+
+# Google docs: 
+https://docs.google.com/document/d/1tGITPmFbZ6HCB-iw0fYsj_OWZjvRsIe4wqQRAlmJrNI/edit?tab=t.0
