@@ -34,15 +34,15 @@ app.layout = html.Div([
 # Dash Layout
 @app.callback(
     Output('map', 'figure'),
-    Output('hurricane-info', 'children'),
-    Input('map', 'clickData')
+    [Input('map', 'clickData')]
 )
+
 def display_path_on_click(clickData):
     # Default figure
     path_fig = go.Figure(fig)
 
     if clickData is None:
-        return path_fig, 'Click on a point to see the full path.'
+        return path_fig
 
     # Get the selected hurricane's Key from the clickData (extract the first element)
     selected_key = clickData['points'][0]['customdata'][0]  # First element is the Key (e.g., 'AL051874')
@@ -100,9 +100,7 @@ def display_path_on_click(clickData):
         coloraxis_showscale=False
     )
 
-    hurricane_info = f'Selected Hurricane: {selected_key}'
-    #seems to need 2 parameters
-    return path_fig, hurricane_info
+    return path_fig
 
 # Run the Dash app
 if __name__ == '__main__':
