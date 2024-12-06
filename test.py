@@ -18,7 +18,7 @@ fig = px.scatter_mapbox(
     hover_data={'Key': True, 'DateTime': True, 'Wind': True, 'Pressure': True},
     title='Hurricane Starting Points',
     zoom=3,
-    height=600
+    height=900
 )
 fig.update_layout(mapbox_style='carto-positron')
 
@@ -92,7 +92,7 @@ def display_path_on_click(clickData):
     path_fig.update_layout(
         mapbox_style='carto-positron',
         title=f'Hurricane Path: {selected_key}',
-        height=600,
+        height=900,
         mapbox=dict(
             center={'lat': 20, 'lon': -60},  # Fixed center for the map
             zoom=3  # Fixed zoom level
