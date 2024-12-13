@@ -1,22 +1,16 @@
 import pandas as pd
 import plotly.graph_objects as go
 import dash
-from dash import dcc, html, callback
+from dash import dcc, html
 from dash.dependencies import Input, Output
-import plotly.express as px
-from datetime import date
-
-df = pd.read_csv('data/AL.csv')
+dfDevastatorAt = pd.read_csv("data/"+"AL.csv")
+dfDevastatorEP = pd.read_csv("data/"+"EP.csv")
+df = [dfDevastatorAt,dfDevastatorEP]
+df=pd.concat(df)
 df['DateTime'] = pd.to_datetime(df['DateTime'], errors='coerce').dt.tz_localize(None)
 df = df[df['DateTime'] >= '1950-01-01']
 #first point of the hurricane
 set_df = df.drop_duplicates(subset='Key')
-exploitedSet = df
-ep = pd.read_csv('data/EP.csv')
-ep['DateTime'] = pd.to_datetime(ep['DateTime'], errors='coerce').dt.tz_localize(None)
-ep = ep[ep['DateTime'] >= '1950-01-01']
-#first point of the hurricane
-set_ep = ep.drop_duplicates(subset='Key')
 # Create a basic map of the hurricane starting points using Plotly
 fig = go.Figure()
 
@@ -72,15 +66,19 @@ app.layout = html.Div([
 
 @app.callback(
     Output('map', 'figure', allow_duplicate=True),
-    Input('date_select', 'value'),
+    [Input('date_select', 'value'),
+    Input('map', 'relayoutData')],
     prevent_initial_call=True)
-def update_output(value):
+def update_output(value,relayoutData):
     print("slide")
     # Convert the selected range into date objects
     start_date = pd.to_datetime(f"{value[0]}-01-01")
     end_date = pd.to_datetime(f"{value[1]}-12-31")
 
-
+    if relayoutData.get('mapbox.center') is not None:
+        map_data =relayoutData.get('mapbox.center').get('lat'),relayoutData.get('mapbox.center').get('lon'),relayoutData.get('mapbox.zoom')
+    else:
+        map_data=[20,-60,-3]
     # Filter the data based on the selected date range
     choosen_value = set_df[(set_df['DateTime'] >= start_date) & (set_df['DateTime'] <= end_date)]
     # Print the filtered data to check if it's correct
@@ -91,7 +89,7 @@ def update_output(value):
     updated_fig.update_layout(
         title=f'Hurricane Starting Points: {value[0]} to {value[1]}',
         mapbox_style='carto-positron',
-        mapbox=dict(center={'lat': 20, 'lon': -60}, zoom=3),
+        mapbox=dict(center={'lat': map_data[0], 'lon': map_data[1]}, zoom=map_data[2]),
         height=900
     )
     return updated_fig
@@ -101,20 +99,23 @@ def update_output(value):
 @app.callback(
     Output('map', 'figure', allow_duplicate=True),
     [Input('map', 'clickData'),
-     Input('date_select', 'value')],
+     Input('date_select', 'value'),
+    Input('map', 'relayoutData')],
     prevent_initial_call=True
 )
-def display_path_on_click(clickData, value):
+def display_path_on_click(clickData, value,relayoutData):
     # Default figure
     path_fig = go.Figure(fig)
     if clickData is None:
         return dash.no_update
-    print(clickData)
     # Get the selected hurricane's Key from the clickData (extract the first element)
     selected_key = clickData['points'][0]['customdata'][0]  # First element is the Key (e.g., 'AL051874')
-
+    map_data=[]
+    if relayoutData.get('mapbox.center') is not None:
+        map_data =relayoutData.get('mapbox.center').get('lat'),relayoutData.get('mapbox.center').get('lon'),relayoutData.get('mapbox.zoom')
+    else:
+        map_data=[20,-60,-3]
     selected_key = str(selected_key).strip()
-    print(selected_key)
     df['Key'] = df['Key'].astype(str).str.strip()
     choosen_value = set_df[str(value[0]) + '-01-01' <= set_df['DateTime']]
     choosen_value = choosen_value[choosen_value['DateTime'] <= str(value[1])]
@@ -126,20 +127,24 @@ def display_path_on_click(clickData, value):
     hurricane_details['time_normalized'] = (hurricane_details['DateTime'] - min_time) / (max_time - min_time)
     path_fig=drawmap(choosen_value)
     # draw line, purple with a marker for the beggining and one for the end
-    path_fig.add_trace(go.Scattermapbox(
-        mode='lines',
-        lon=hurricane_details['Lon'],
-        lat=hurricane_details['Lat'],
-        line=dict(
-            width=4,
-            color='purple',
-        ),
-        hoverinfo='text',
-        customdata=hurricane_details['Key'],
-        text=hurricane_details['Name'],
-        showlegend=False  # No legend for individual segments
-    ))
 
+    hurricane_details['Color'] = hurricane_details['Status'].apply(
+        lambda x: 'red' if x == 'HU' else 'blue')
+
+    for i in range(len(hurricane_details) - 1):
+        path_fig.add_trace(go.Scattermapbox(
+            mode='lines',
+            lon=hurricane_details['Lon'].iloc[i:i + 2],  # Use two consecutive points
+            lat=hurricane_details['Lat'].iloc[i:i + 2],  # Use two consecutive points
+            line=dict(
+                width=4,
+                color='red' if hurricane_details['Status'].iloc[i] == 'HU' else 'blue'
+                # Assign color based on condition
+            ),
+            hoverinfo='text',
+            text=hurricane_details['Name'].iloc[i],  # Add name for hover text
+            showlegend=False
+        ))
     start_point = hurricane_details.iloc[0]
     end_point = hurricane_details.iloc[-1]
 
@@ -161,8 +166,8 @@ def display_path_on_click(clickData, value):
         title=f'Hurricane Path: {selected_key}',
         height=900,
         mapbox=dict(
-            center={'lat': 20, 'lon': -60},  # Fixed center for the map
-            zoom=3  # Fixed zoom level
+            center={'lat': map_data[0], 'lon': map_data[1]},  # Fixed center for the map
+            zoom=map_data[2]  # Fixed zoom level
         ),
         coloraxis_showscale=False
     )
@@ -176,7 +181,6 @@ def display_path_on_click(clickData, value):
     prevent_initial_call=True
 )
 def clear_click_data(n_clicks,value):
-    print(n_clicks)
     if n_clicks > 0:
         choosen_value = set_df[str(value[0]) + '-01-01' <= set_df['DateTime']]
         choosen_value = choosen_value[choosen_value['DateTime'] <= str(value[1])]
@@ -196,16 +200,17 @@ def clear_click_data(n_clicks,value):
 
 def drawmap(dfDraw):
     updated_fig = go.Figure()
-
     # Clear any previous data from the figure (no traces in this case)
     updated_fig.data = []
+    dfDraw['Color'] = dfDraw['Status'].apply(
+        lambda x: 'red' if x == 'HU' else 'green')  # Replace 'Status' with your column name
 
     # Add the new data as a trace
     updated_fig.add_trace(go.Scattermapbox(
         mode='markers',
         lon=dfDraw['Lon'],
         lat=dfDraw['Lat'],
-        marker=dict(size=7, color='blue'),
+        marker=dict(size=7, color=dfDraw['Color']),
         text=(
                 'Name: ' + dfDraw['Name'] + '<br>' +
                 'Key: ' + dfDraw['Key'] + '<br>' +
