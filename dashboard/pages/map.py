@@ -4,16 +4,17 @@ from dash import html
 from dash.dependencies import Input, Output, State
 import pandas as pd
 import plotly.graph_objects as go
-from core import app 
+
+dash.register_page(__name__, path='/maps')
 
 # Read the data (adjust the path if needed)
-df = pd.read_csv('/Users/cyriltelley/Desktop/MSE/MA-VI/Projet_VI/hurricane-tracker/data/AL.csv')  
+df = pd.read_csv('C:/HES-SO/MA-VI/hurricane-tracker/data/AL.csv')
 df['DateTime'] = pd.to_datetime(df['DateTime'], errors='coerce').dt.tz_localize(None)
 df = df[df['DateTime'] >= '1950-01-01']
 
 # First point of the hurricane
 set_df = df.drop_duplicates(subset='Key')
-ep = pd.read_csv('/Users/cyriltelley/Desktop/MSE/MA-VI/Projet_VI/hurricane-tracker/data/EP.csv')  # Adjust the path if needed
+ep = pd.read_csv('C:/HES-SO/MA-VI/hurricane-tracker/data/EP.csv')  # Adjust the path if needed
 ep['DateTime'] = pd.to_datetime(ep['DateTime'], errors='coerce').dt.tz_localize(None)
 ep = ep[ep['DateTime'] >= '1950-01-01']
 # First point of the hurricane
@@ -69,7 +70,7 @@ layout = html.Div(children=[
 ])
 
 # Callback to update the map based on the date range slider
-@app.callback(
+@dash.callback(
     Output('map', 'figure', allow_duplicate=True),
     Input('date_select', 'value'),
     prevent_initial_call=True)
@@ -93,7 +94,7 @@ def update_output(value):
 
 
 # Callback to display hurricane path on click
-@app.callback(
+@dash.callback(
     Output('map', 'figure', allow_duplicate=True),
     [Input('map', 'clickData'),
      Input('date_select', 'value')],
@@ -166,7 +167,7 @@ def display_path_on_click(clickData, value):
     return path_fig
 
 # Callback to clear click data
-@app.callback(
+@dash.callback(
     [Output('map', 'clickData'),Output('map', 'figure', allow_duplicate=True)],
     [Input('clear-btn', 'n_clicks'),
      Input('date_select', 'value')],
@@ -215,3 +216,34 @@ def drawmap(dfDraw):
     ))
 
     return updated_fig
+
+layout = html.Div(children=[
+    html.H3('Maps', className='text-center mt-3'),
+    
+    html.Div(className='Input', children=[
+        html.P('This page displays the starting points of hurricanes on a map.'),
+        html.P('You can select a date range to display the hurricanes that started in that range.'),
+        html.P('Click on a hurricane to see its path.'),
+        html.P('Click on the "Clear Selection" button to clear the selected hurricane path.'),
+    ]),
+    
+    # Date range slider
+    html.Div(className='RadioButton mt-3', children=[
+        html.Label('Select Date Range:', className="label"),
+        dcc.RangeSlider(begin_date, end_date, step=1, marks={str(year): str(year) for year in range(begin_date, end_date + 1, 10)}, value=[begin_date, end_date], allowCross=False, id='date_select', tooltip={'placement': 'bottom', 'always_visible': True}),
+    ]),    
+    
+    dcc.Graph(id='map', figure=fig, config={'scrollZoom': True, 'displayModeBar': True}),        
+    
+    
+    html.Footer(className='home-footer', children=[
+        html.Div(className='separator'),
+        html.Div(className='container', children=[
+            html.P('© 2024 - HES-SO Master. All rights reserved.', className='text-center'),
+            html.Div(className='text-center', children=[                
+                html.Img(src='/assets/images/HES_SO_Logo.png', className='hesso-logo-footer'),
+            ]),
+            html.P('MA-VI Project - Telley Cyril / Saucy Quentin / Altin Hajda', className='text-center'),
+        ]),
+    ]),
+])

@@ -5,36 +5,16 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
-from core import app
+import dash
 
 # Load your data
-df = pd.read_csv('/Users/cyriltelley/Desktop/MSE/MA-VI/Projet_VI/hurricane-tracker/data/AL.csv')
+df = pd.read_csv('C:/HES-SO/MA-VI/hurricane-tracker/data/AL.csv')
 df['year'] = pd.to_datetime(df['DateTime']).dt.year
 
-# Layout of the app
-layout = html.Div(children=[
-    html.H1(children="Accident Analysis Dashboard"),
-
-    html.Div(children='''
-        Analyzing accident trends and patterns.
-    '''),
-
-    # First row of graphs
-    html.Div(children=[
-        dcc.Graph(id='cases-by-year-bar'),
-        dcc.Graph(id='wind-speed-by-year'),
-    ], style={'display': 'flex', 'flex-direction': 'row'}),
-
-    # Second row of graphs
-    html.Div(children=[
-        dcc.Graph(id='lat-lon-scatter'),
-        dcc.Graph(id='cases-per-storm-hist'),
-    ], style={'display': 'flex', 'flex-direction': 'row'})
-
-])
+dash.register_page(__name__, path='/graphs')
 
 # Callback to update the 'cases-by-year-bar' graph
-@app.callback(
+@dash.callback(
     Output('cases-by-year-bar', 'figure'),
     Input('cases-by-year-bar', 'id'))
 def update_cases_by_year_bar(id):
@@ -54,7 +34,7 @@ def update_cases_by_year_bar(id):
     return fig
 
 # Callback to update the 'wind-speed-by-year' graph
-@app.callback(
+@dash.callback(
     Output('wind-speed-by-year', 'figure'),
     Input('wind-speed-by-year', 'id'))
 def update_wind_speed_by_year(id):
@@ -85,7 +65,7 @@ def update_wind_speed_by_year(id):
 
 
 # Callback to update the 'lat-lon-scatter' graph
-@app.callback(
+@dash.callback(
     Output('lat-lon-scatter', 'figure'),
     Input('lat-lon-scatter', 'id'))
 def update_lat_lon_scatter(id):
@@ -94,7 +74,7 @@ def update_lat_lon_scatter(id):
     return fig
 
 # Callback to update the 'cases-per-storm-hist' graph
-@app.callback(
+@dash.callback(
     Output('cases-per-storm-hist', 'figure'),
     Input('cases-per-storm-hist', 'id'))
 def update_cases_per_storm_hist(id):
@@ -103,6 +83,31 @@ def update_cases_per_storm_hist(id):
     fig.update_layout(legend=dict(x=0.75, y=-0.2, orientation='h'))
     return fig
 
+# Layout of the app
+layout = html.Div(children=[
+    html.H3(children="Accident Analysis Dashboard"),
 
-if __name__ == '__main__':
-    app.run_server(debug=True)
+    html.Div(children=[
+        html.P(children="This dashboard provides an overview of the accidents data."),
+        html.P(children="You can navigate through the different pages using the navigation bar."),
+    ], className='Info'),
+
+    # First row of graphs
+    html.Div(children=[
+        dcc.Graph(id='cases-by-year-bar'),
+        dcc.Graph(id='wind-speed-by-year'),
+    ], className='row'),
+
+
+
+    html.Footer(className='home-footer', children=[
+        html.Div(className='separator'),
+        html.Div(className='container', children=[
+            html.P('© 2024 - HES-SO Master. All rights reserved.', className='text-center'),
+            html.Div(className='text-center', children=[                
+                html.Img(src='/assets/images/HES_SO_Logo.png', className='hesso-logo-footer'),
+            ]),
+            html.P('MA-VI Project - Telley Cyril / Saucy Quentin / Altin Hajda', className='text-center'),
+        ]),
+    ]),
+])
