@@ -8,7 +8,7 @@ Google docs: <https://docs.google.com/document/d/1tGITPmFbZ6HCB-iw0fYsj_OWZjvRsI
 
 ## User Guide
 
-## Installation
+### Installation
 
 To get started, clone the repository locally using the following command:
 
