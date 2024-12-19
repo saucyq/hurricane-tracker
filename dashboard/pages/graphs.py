@@ -33,7 +33,8 @@ df = df.reset_index(drop=True)
 
 df['year'] = df['DateTime'].dt.year
 
-
+def knots_to_kmh(knots):
+    return knots * 1.852
 
 dash.register_page(__name__, path='/graphs')
 
@@ -69,11 +70,12 @@ def update_cases_by_year_bar(id):
 def update_wind_speed_by_year(id):
     fig = go.Figure()
     # Maximum wind speed by year
-    df_grouped_by_year_wind = df.groupby('year')['Wind'].max().reset_index(name='max_wind')
+    df['Wind_kmh'] = knots_to_kmh(df['Wind'])
+    df_grouped_by_year_wind = df.groupby('year')['Wind_kmh'].max().reset_index(name='max_wind')
     fig.add_trace(go.Scatter(x=df_grouped_by_year_wind['year'], y=df_grouped_by_year_wind['max_wind'], mode='lines', name='Max wind speed by year', line=dict(color='blue')))
 
     # Minimum wind speed by year
-    df_grouped_by_year_wind_min = df.groupby('year')['Wind'].min().reset_index(name='min_wind')
+    df_grouped_by_year_wind_min = df.groupby('year')['Wind_kmh'].min().reset_index(name='min_wind')
     fig.add_trace(go.Scatter(x=df_grouped_by_year_wind_min['year'], y=df_grouped_by_year_wind_min['min_wind'], mode='lines', name='Min wind speed by year', line=dict(color='green')))
 
     # Rolling mean max
@@ -88,8 +90,8 @@ def update_wind_speed_by_year(id):
         legend=dict(x=0, y=-1.25, orientation='h'),
         title='Wind speed by year',
         xaxis_title='Year',
-        yaxis_title='Wind speed (mph)',
-        height=450  # Hauteur fixe
+        yaxis_title='Wind speed (km/h)',
+        height=450  # Fixed height
     )
 
     fig.update_xaxes(rangeslider_visible=True)
@@ -240,12 +242,7 @@ def update_correlation_temp_hurricane_line(id):
 
 # Layout of the app
 layout = html.Div(children=[
-    html.H3(children="Accident Analysis Dashboard", style={'textAlign': 'center'}),
-
-    html.Div(children=[
-        html.P(children="This dashboard provides an overview of the accidents data."),
-        html.P(children="You can navigate through the different pages using the navigation bar."),
-    ], className='Info', style={'textAlign': 'center'}),
+    html.H3(children="Number of case / Wind speeds", className='text-center mt-3'),
 
     # Première ligne avec deux graphiques
     html.Div(children=[
@@ -254,14 +251,14 @@ layout = html.Div(children=[
 
         # Deuxième graphique
         dcc.Graph(id='wind-speed-by-year'),
-    ], style={'display': 'flex', 'width': '100%'}),
+    ], style={'display': 'flex', 'width': '100%', 'margin-top': '20px'}),
 
 
-    html.Hr(),  # Séparation horizontale
+    html.Div(className='separator'),
 
     # Section 2: Corrélation
     html.Div(children=[
-        html.H2(children="Correlation Temperature / Number of Hurricanes", style={'textAlign': 'center'}),
+        html.H3(children="Correlation Temperature / Number of Hurricanes", className='text-center mt-3'),
         html.Div(children=[
             # Premier graphique de corrélation (nuage de points)
             html.Div([
@@ -275,21 +272,21 @@ layout = html.Div(children=[
         ], style={'width': '100%'}),
     ]),
 
-    html.Hr(),  # Séparation horizontale
+    html.Div(className='separator'),
 
     # Section 3: Comparaison AL et EP
     html.Div(children=[
-        html.H2(children="Comparaison AL and EP", style={'textAlign': 'center'}),
+        html.H3(children="Comparaison AL and EP", className='text-center mt-3'),
         html.Div(children=[
             dcc.Graph(id='cases-by-year-al-ep'),
         ], style={'width': '100%'}),
     ]),
 
-    html.Hr(),  # Séparation horizontale
+    html.Div(className='separator'),
 
     # Section 4: Tendances
+    html.H3(children="Trends", className='text-center mt-3'),
     html.Div(children=[
-        html.H2(children="Trends", style={'textAlign': 'center'}),
         html.Div(children=[
             dcc.Graph(id='trends-graph'),
         ], style={'width': '100%'}),

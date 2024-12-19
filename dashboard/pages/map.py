@@ -15,6 +15,9 @@ df = pd.concat([dfDevastatorAt, dfDevastatorEP])
 df['DateTime'] = pd.to_datetime(df['DateTime'], errors='coerce').dt.tz_localize(None)
 df = df[df['DateTime'] >= '1950-01-01']
 
+# Conversion des noeuds (kts) en km/h
+df['Wind_kmh'] = df['Wind'] * 1.852
+
 # Points de départ des ouragans
 set_df = df.drop_duplicates(subset='Key')
 
@@ -30,7 +33,7 @@ fig.add_trace(go.Scattermapbox(
             'Name: ' + set_df['Name'] + '<br>' +
             'Key: ' + set_df['Key'] + '<br>' +
             'DateTime: ' + set_df['DateTime'].dt.strftime('%Y-%m-%d %H:%M:%S') + '<br>' +
-            'Wind: ' + set_df['Wind'].astype(str) + '<br>' +
+            'Wind: ' + set_df['Wind_kmh'].round(1).astype(str) + ' km/h<br>' +
             'Pressure: ' + set_df['Pressure'].astype(str)
     ),
     hoverinfo='text',
@@ -41,7 +44,7 @@ fig.update_layout(
     title='Hurricane Starting Points',
     mapbox_style='carto-positron',
     mapbox=dict(center={'lat': 20, 'lon': -60}, zoom=3),
-    height=900
+    height=700
 )
 
 begin_date = set_df['DateTime'].dt.year.iloc[0]
@@ -50,42 +53,45 @@ end_date = set_df['DateTime'].dt.year.iloc[-1]
 # Création du graphique de densité
 df_counts = df.groupby(['Lat', 'Lon']).size().reset_index(name='count')
 density_fig = px.density_mapbox(df_counts, lat='Lat', lon='Lon', z='count', radius=15,
-                            center=dict(lat=20, lon=-30), zoom=2,
+                            center=dict(lat=20, lon=-60), zoom=3,
                             mapbox_style="open-street-map",
-                            #height=900,
-                            title="Map huricans densities")
+                            height=700,
+                            title='Hurricane Density Map')
                             
 
 layout = html.Div(children=[
-    html.H3('Maps', className='text-center mt-3'),
-
-    html.Div(className='Input', children=[
-        html.P('This page displays the starting points of hurricanes on a map.'),
-        html.P('You can select a date range to display the hurricanes that started in that range.'),
-        html.P('Click on a hurricane to see its path.'),
-        html.P('Click on the "Clear Selection" button to clear the selected hurricane path.'),
-    ]),
+    html.H3('Hurrican path', className='text-center mt-3'),
 
     # Date range slider
     html.Div(className='RadioButton mt-3', children=[
+        html.P('This section displays the starting points of hurricanes on a map.'),
+        html.P('You can select a date range to display the hurricanes that started in that range.'),
+        html.P('Click on a hurricane to see its path.'),
+        html.P('Click on the "Clear Selection" button to clear the selected hurricane path.'),
+        html.Br(),
         html.Label('Select Date Range:', className="label"),
         dcc.RangeSlider(begin_date, end_date, step=1,
                         marks={str(year): str(year) for year in range(begin_date, end_date + 1, 10)},
                         value=[begin_date, end_date], allowCross=False, id='date_select',
                         tooltip={'placement': 'bottom', 'always_visible': True}),
+        html.Button("Clear Selection", id="clear-btn", className="btn btn-primary", n_clicks=0),
     ]),
 
-    html.Button("Clear Selection", id="clear-btn", n_clicks=0),
     dcc.Graph(id='map', figure=fig, config={'scrollZoom': True, 'displayModeBar': True}),
     html.Div(id='output-container-date-picker-range'),
 
     # Conteneur pour le graphique d'évolution du vent
     html.Div(id='hurricane-wind-graph', children=[]),
-
-    # Graphique de densité
+    
+    html.Div(className='separator'),    
+    html.H3('Heatmap', className='text-center mt-3'),
+    
+    html.Div(className='RadioButton mt-3', children=[
+        html.P('This section displays the density of hurricanes on a map.'),
+        html.P('The color intensity represents the number of hurricanes in a specific area.'),
+    ]),
+    
     dcc.Graph(id='density-map', figure=density_fig, config={'scrollZoom': True, 'displayModeBar': True}),
-
-    dcc.Link('Go back to home', href='/'),
 
     html.Footer(className='home-footer', children=[
         html.Div(className='separator'),
@@ -123,7 +129,7 @@ def update_output(value, relayoutData):
         title=f'Hurricane Starting Points: {value[0]} to {value[1]}',
         mapbox_style='carto-positron',
         mapbox=dict(center=map_center, zoom=map_zoom),
-        height=900
+        height=700
     )
     return updated_fig
 
@@ -179,40 +185,71 @@ def display_path_and_wind_graph_on_click(clickData, value, relayoutData):
 
     path_fig.add_trace(go.Scattermapbox(
         mode='markers',
-        lon=[start_point['Lon'], end_point['Lon']],
-        lat=[start_point['Lat'], end_point['Lat']],
-        marker=dict(
-            size=10,
-            color=['green', 'red'],
-            symbol='circle'
-        ),
-        text=['Start', 'End'],
-        hoverinfo='text',
-        showlegend=False
+        lon=[start_point['Lon']],
+        lat=[start_point['Lat']],
+        marker=dict(size=12, color='green', symbol='circle'),
+        text='Start',
+        hoverinfo='text'
+    ))
+
+    path_fig.add_trace(go.Scattermapbox(
+        mode='markers',
+        lon=[end_point['Lon']],
+        lat=[end_point['Lat']],
+        marker=dict(size=12, color='red', symbol='x'),
+        text='End',
+        hoverinfo='text'
     ))
 
     path_fig.update_layout(
         mapbox_style='carto-positron',
-        title=f'Hurricane Path: {selected_key}',
-        height=900,
         mapbox=dict(center=map_center, zoom=map_zoom),
-        coloraxis_showscale=False
+        title=f'Hurricane Path for {selected_key}'
     )
+        
+    path_fig.update_layout(showlegend=False)
 
-    # Création du graphique d'évolution du vent
-    wind_graph = dcc.Graph(
-        figure=go.Figure(
-            data=[go.Scatter(x=hurricane_details['DateTime'], y=hurricane_details['Wind'], mode='lines+markers', line=dict(color='blue'))],
-            layout=go.Layout(
-                title=f"Evolution du vent: {hurricane_details['Name'].iloc[0]} ({selected_key})",
-                xaxis_title="Date et Heure",
-                yaxis_title="Vitesse du vent (noeuds)",
-                height=400
+    # Graphique des vitesses de vent
+    wind_fig = go.Figure()
+
+    wind_fig.add_trace(go.Scatter(
+        x=hurricane_details['DateTime'],
+        y=hurricane_details['Wind_kmh'],
+        mode='lines+markers',
+        name='Wind Speed (km/h)',
+        line=dict(color='blue')
+    ))
+
+    # Ajouter des zones rouges pour chaque ouragan quand le status est HU
+    for i in range(len(hurricane_details)):
+        if hurricane_details['Status'].iloc[i] == 'HU':
+            wind_fig.add_vrect(
+                x0=hurricane_details['DateTime'].iloc[i],
+                x1=hurricane_details['DateTime'].iloc[i + 1] if i + 1 < len(hurricane_details) else hurricane_details['DateTime'].iloc[i],
+                fillcolor='red',
+                opacity=0.2,
+                layer='below',
+                line_width=0
             )
-        )
+                
+    wind_fig.add_trace(go.Scatter(
+        x=[None],
+        y=[None],
+        mode='markers',
+        name='Red Zone for Hurricane',
+        marker=dict(color='red', size=10),
+        showlegend=True
+    ))
+
+    wind_fig.update_layout(
+        title='Wind Speed Over Time',
+        xaxis_title='Date',
+        yaxis_title='Wind Speed (km/h)',
+        height=400
     )
 
-    return path_fig, wind_graph
+    return path_fig, dcc.Graph(figure=wind_fig)
+
 
 
 # Callback pour effacer les données de clic
@@ -230,7 +267,7 @@ def clear_click_data(n_clicks, value):
         to_ret.update_layout(
             mapbox_style='carto-positron',
             title=f'Hurricane Path',
-            height=900,
+            height=700,
             mapbox=dict(
                 center={'lat': 20, 'lon': -60},
                 zoom=3
@@ -258,7 +295,7 @@ def drawmap(dfDraw):
                 'Name: ' + dfDraw['Name'] + '<br>' +
                 'Key: ' + dfDraw['Key'] + '<br>' +
                 'DateTime: ' + dfDraw['DateTime'].dt.strftime('%Y-%m-%d %H:%M:%S') + '<br>' +
-                'Wind: ' + dfDraw['Wind'].astype(str) + '<br>' +
+                'Wind: ' + dfDraw['Wind_kmh'].round(1).astype(str) + ' km/h<br>' +
                 'Pressure: ' + dfDraw['Pressure'].astype(str)
         ),
         hoverinfo='text',
