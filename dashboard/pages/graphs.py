@@ -51,7 +51,7 @@ def update_cases_by_year_bar(id):
         title='Number of cases by year',
         xaxis_title='Year',
         yaxis_title='Number of cases',
-        height=450  # Hauteur fixe
+        height=450
     )
 
     # Add rolling mean
@@ -97,7 +97,7 @@ def update_wind_speed_by_year(id):
     fig.update_xaxes(rangeslider_visible=True)
     return fig
 
-# Callback pour mettre à jour le graphique de corrélation
+# Callback to update the 'correlation-graph' graph
 @dash.callback(
     Output('correlation-graph', 'figure'),
     Input('correlation-graph', 'id'))
@@ -131,14 +131,14 @@ def update_correlation_graph(id):
             side='right'
         ),
         legend=dict(x=0, y=-1, orientation='h'),
-        height=450  # Hauteur fixe
+        height=450
     )
 
     fig.update_xaxes(rangeslider_visible=True)
     fig.update_xaxes(range=[1959, count['year'].max()])
     return fig
 
-# Callback pour mettre à jour le graphique du nombre de cas par an (AL et EP)
+# Callback to update the 'cases-by-year-al-ep' graph
 @dash.callback(
     Output('cases-by-year-al-ep', 'figure'),
     Input('cases-by-year-al-ep', 'id'))
@@ -165,7 +165,7 @@ def update_cases_by_year_al_ep(id):
     )
     return fig
 
-# Callback pour mettre à jour le graphique des tendances
+# Callback to update the 'trends-graph' graph
 @dash.callback(
     Output('trends-graph', 'figure'),
     Input('trends-graph', 'id'))
@@ -186,11 +186,13 @@ def update_trends_graph(id):
         xaxis_title='Year',
         yaxis_title='Number of cases',
         legend=dict(x=0, y=-0.25, orientation='h'),
-        height=450  # Hauteur fixe
-    )
+        height=450
+    )    
+    fig.update_xaxes(range=[1959, count['year'].max()])     # 1959: Due to the rolling mean
+    
     return fig
 
-# Callback pour le graphique de corrélation entre température et nombre d'ouragans (nuage de points)
+# Callback to update the 'correlation-temp-hurricane-scatter' graph
 @dash.callback(
     Output('correlation-temp-hurricane-scatter', 'figure'),
     Input('correlation-temp-hurricane-scatter', 'id'))
@@ -204,13 +206,13 @@ def update_correlation_temp_hurricane_scatter(id):
                      title='Correlation between temperature and number of hurricanes (trend)',
                      trendline="ols", trendline_color_override="red")
     fig.update_layout(
-        xaxis_title='Tempurature mean (°C)',
-        yaxis_title='Numbre of hurrican',
+        xaxis_title='Tempurature (°C)',
+        yaxis_title='Number of hurrican',
         height=450
     )
     return fig
 
-# Callback pour le graphique de corrélation entre température et nombre d'ouragans (lignes)
+# Callback to update the 'correlation-temp-hurricane-line' graph
 @dash.callback(
     Output('correlation-temp-hurricane-line', 'figure'),
     Input('correlation-temp-hurricane-line', 'id'))
@@ -226,16 +228,17 @@ def update_correlation_temp_hurricane_line(id):
     fig.add_trace(go.Scatter(x=df_global_grouped['year'], y=df_global_grouped['rolling_mean_temp'],
                              mode='lines', name='Temperature mean (trend)'))
     fig.add_trace(go.Scatter(x=count['year'], y=count['rolling_mean_count'],
-                             mode='lines', name='Numbre of hurrican (trend)', yaxis='y2'))
+                             mode='lines', name='Number of hurrican (trend)', yaxis='y2'))
 
     fig.update_layout(
         title='Correlation between temperature and number of hurricanes (trend)',
-        xaxis_title='year',
-        yaxis_title='temperature mean (°C)',
-        yaxis2=dict(title='numbre of hurrican', overlaying='y', side='right'),
-        legend=dict(x=0, y=-0.25, orientation='h'),
+        xaxis_title='Year',
+        yaxis_title='Temperature (°C)',
+        yaxis2=dict(title='Number of hurrican', overlaying='y', side='right'),
+        legend=dict(x=0, y=-0.75, orientation='h'),
         height=450
     )
+    fig.update_xaxes(range=[1959, count['year'].max()])     # 1959: Due to the rolling mean
     fig.update_xaxes(rangeslider_visible=True)
     return fig
 
