@@ -8,19 +8,32 @@ import pandas as pd
 import numpy as np
 import dash
 
-# Load your data
-df = pd.read_csv('data/AL.csv')
-df['year'] = pd.to_datetime(df['DateTime']).dt.year
-
-# Supposons que tu as un fichier CSV pour df_global
-df_global = pd.read_csv('data/GlobalTemperatures.csv')  # Remplace 'data/GlobalTemperatures.csv' par le chemin de ton fichier
-df_global['year'] = pd.to_datetime(df_global['dt']).dt.year
-
-# Supposons que tu as les fichiers CSV pour df_AL et df_EP
 df_AL = pd.read_csv('data/AL.csv')
 df_EP = pd.read_csv('data/EP.csv')
-df_AL['year'] = pd.to_datetime(df_AL['DateTime']).dt.year
-df_EP['year'] = pd.to_datetime(df_EP['DateTime']).dt.year
+df_global = pd.read_csv('data/GlobalTemperatures.csv')
+
+df_AL['DateTime'] = pd.to_datetime(df_AL['DateTime'])
+df_EP['DateTime'] = pd.to_datetime(df_EP['DateTime'])
+df_global['dt'] = pd.to_datetime(df_global['dt'])
+
+df_AL['year'] = df_AL['DateTime'].dt.year
+df_EP['year'] = df_EP['DateTime'].dt.year
+
+df_AL = df_AL[df_AL['DateTime'].dt.year >= 1950]
+df_EP = df_EP[df_EP['DateTime'].dt.year >= 1950]
+df_global = df_global[df_global['dt'].dt.year >= 1950]
+
+df_AL = df_AL.reset_index(drop=True)
+df_EP = df_EP.reset_index(drop=True)
+df_global = df_global.reset_index(drop=True)
+
+df = pd.concat([df_AL, df_EP])
+
+df = df.reset_index(drop=True)
+
+df['year'] = df['DateTime'].dt.year
+
+
 
 dash.register_page(__name__, path='/graphs')
 
@@ -86,7 +99,11 @@ def update_wind_speed_by_year(id):
 @dash.callback(
     Output('correlation-graph', 'figure'),
     Input('correlation-graph', 'id'))
+
 def update_correlation_graph(id):
+
+    df_global['year'] = pd.to_datetime(df_global['dt']).dt.year
+
     df_global_grouped = df_global.groupby('year')['LandAverageTemperature'].mean().reset_index(name='mean_temp')
     df_global_grouped['rolling_mean_temp'] = df_global_grouped['mean_temp'].rolling(window=10).mean()
 
@@ -188,6 +205,9 @@ layout = html.Div(children=[
         # Deuxième graphique
         dcc.Graph(id='wind-speed-by-year'),
     ], style={'display': 'flex', 'width': '100%'}),
+
+    html.Div(className='separator'),
+    html.H3(children="Graphs", style={'textAlign': 'center'}),
 
     # Graphiques suivants (un par ligne)
     html.Div(children=[
