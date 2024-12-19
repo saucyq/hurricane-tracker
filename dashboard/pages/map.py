@@ -49,12 +49,30 @@ end_date = set_df['DateTime'].dt.year.iloc[-1]
 
 # Création du graphique de densité
 df_counts = df.groupby(['Lat', 'Lon']).size().reset_index(name='count')
-density_fig = px.density_mapbox(df_counts, lat='Lat', lon='Lon', z='count', radius=15,
-                            center=dict(lat=20, lon=-30), zoom=2,
-                            mapbox_style="open-street-map",
-                            #height=900,
-                            title="Map huricans densities")
-                            
+density_fig = go.Figure(
+    go.Densitymapbox(
+        lat=df_counts['Lat'],
+        lon=df_counts['Lon'],
+        z=df_counts['count'],
+        radius=15,  # Radius for density estimation
+        colorscale="Viridis",  # Color scale
+        opacity=0.7,  # Layer opacity
+    )
+)
+
+# Update the layout to set mapbox properties
+
+density_fig.update_layout(
+    mapbox=dict(
+        style="carto-positron",  # Map style
+        center=dict(lat=20, lon=-30),  # Map center
+        zoom=2,  # Zoom level
+    ),
+    title="Map of Hurricane Densities",  # Add a title
+    margin=dict(l=0, r=0, t=30, b=0),  # Optional margin adjustments
+)
+
+# Show the figure
 
 layout = html.Div(children=[
     html.H3('Maps', className='text-center mt-3'),
@@ -101,8 +119,10 @@ layout = html.Div(children=[
 
 
 # Callback pour mettre à jour la carte en fonction de la plage de dates
+
 @dash.callback(
-    Output('map', 'figure', allow_duplicate=True),
+    [Output('map', 'figure', allow_duplicate=True),  # First map output
+     Output('density-map', 'figure')],
     [Input('date_select', 'value'),
      Input('map', 'relayoutData')],
     prevent_initial_call=True)
@@ -118,6 +138,7 @@ def update_output(value, relayoutData):
         map_zoom = 3
 
     chosen_value = set_df[(set_df['DateTime'] >= start_date) & (set_df['DateTime'] <= end_date)]
+    chosen_value_dataset = df[(df['DateTime'] >= start_date) & (df['DateTime'] <= end_date)]
     updated_fig = drawmap(chosen_value)
     updated_fig.update_layout(
         title=f'Hurricane Starting Points: {value[0]} to {value[1]}',
@@ -125,7 +146,27 @@ def update_output(value, relayoutData):
         mapbox=dict(center=map_center, zoom=map_zoom),
         height=900
     )
-    return updated_fig
+    df_counts = chosen_value_dataset.groupby(['Lat', 'Lon']).size().reset_index(name='count')
+    density_fig = go.Figure(
+        go.Densitymapbox(
+            lat=df_counts['Lat'],
+            lon=df_counts['Lon'],
+            z=df_counts['count'],
+            radius=15,
+            colorscale="Viridis",
+            opacity=0.7,
+        )
+    )
+    density_fig.update_layout(
+        mapbox=dict(
+            style="carto-positron",
+            center=dict(lat=20, lon=-30),
+            zoom=2,
+        ),
+        title="Map of Hurricane Densities",
+        margin=dict(l=0, r=0, t=30, b=0),
+    )
+    return updated_fig,density_fig
 
 
 # Callback pour afficher le chemin de l'ouragan et le graphique d'évolution du vent
