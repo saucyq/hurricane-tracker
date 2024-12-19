@@ -56,7 +56,7 @@ def update_cases_by_year_bar(id):
     # Add rolling mean
     count['rolling_mean'] = count['count'].rolling(window=10).mean()
     fig.add_trace(go.Scatter(x=count['year'], y=count['rolling_mean'], mode='lines', name='Rolling mean of cases (10 years window)'))
-    fig.update_layout(legend=dict(x=0.05, y=-0.25, orientation='h'))
+    fig.update_layout(legend=dict(x=0.05, y=-1.25, orientation='h'))
 
     # Time series range slider
     fig.update_xaxes(rangeslider_visible=True)
@@ -85,7 +85,7 @@ def update_wind_speed_by_year(id):
     fig.add_trace(go.Scatter(x=df_grouped_by_year_wind_min['year'], y=df_grouped_by_year_wind_min['rolling_mean_min'], mode='lines', name='Rolling mean of min wind speed (10 years window)', line=dict(color='orange')))
 
     fig.update_layout(
-        legend=dict(x=0.05, y=-0.25, orientation='h'),
+        legend=dict(x=0, y=-1.25, orientation='h'),
         title='Wind speed by year',
         xaxis_title='Year',
         yaxis_title='Wind speed (mph)',
@@ -128,7 +128,7 @@ def update_correlation_graph(id):
             overlaying='y',
             side='right'
         ),
-        legend=dict(x=0.05, y=-0.25, orientation='h'),
+        legend=dict(x=0, y=-1, orientation='h'),
         height=450  # Hauteur fixe
     )
 
@@ -158,7 +158,7 @@ def update_cases_by_year_al_ep(id):
         title_text='Number of cases by year in AL and EP',
         xaxis_title='Year',
         yaxis_title='Number of cases',
-        legend=dict(x=0.05, y=-0.25, orientation='h'),
+        legend=dict(x=0, y=-0.25, orientation='h'),
         height=450  # Hauteur fixe
     )
     return fig
@@ -183,10 +183,60 @@ def update_trends_graph(id):
         title='Trends of cases by year',
         xaxis_title='Year',
         yaxis_title='Number of cases',
-        legend=dict(x=0.05, y=-0.25, orientation='h'),
+        legend=dict(x=0, y=-0.25, orientation='h'),
         height=450  # Hauteur fixe
     )
     return fig
+
+# Callback pour le graphique de corrélation entre température et nombre d'ouragans (nuage de points)
+@dash.callback(
+    Output('correlation-temp-hurricane-scatter', 'figure'),
+    Input('correlation-temp-hurricane-scatter', 'id'))
+def update_correlation_temp_hurricane_scatter(id):
+    df_global['year'] = pd.to_datetime(df_global['dt']).dt.year
+    df_global_grouped = df_global.groupby('year')['LandAverageTemperature'].mean().reset_index(name='mean_temp')
+    count = df.groupby('year').size().reset_index(name='count')
+    df_corr = pd.merge(df_global_grouped, count, on='year')
+
+    fig = px.scatter(df_corr, x='mean_temp', y='count', 
+                     title='Correlation between temperature and number of hurricanes (trend)',
+                     trendline="ols", trendline_color_override="red")
+    fig.update_layout(
+        xaxis_title='Tempurature mean (°C)',
+        yaxis_title='Numbre of hurrican',
+        height=450
+    )
+    return fig
+
+# Callback pour le graphique de corrélation entre température et nombre d'ouragans (lignes)
+@dash.callback(
+    Output('correlation-temp-hurricane-line', 'figure'),
+    Input('correlation-temp-hurricane-line', 'id'))
+def update_correlation_temp_hurricane_line(id):
+    df_global['year'] = pd.to_datetime(df_global['dt']).dt.year
+    df_global_grouped = df_global.groupby('year')['LandAverageTemperature'].mean().reset_index(name='mean_temp')
+    df_global_grouped['rolling_mean_temp'] = df_global_grouped['mean_temp'].rolling(window=10).mean()
+
+    count = df.groupby('year').size().reset_index(name='count')
+    count['rolling_mean_count'] = count['count'].rolling(window=10).mean()
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=df_global_grouped['year'], y=df_global_grouped['rolling_mean_temp'],
+                             mode='lines', name='Temperature mean (trend)'))
+    fig.add_trace(go.Scatter(x=count['year'], y=count['rolling_mean_count'],
+                             mode='lines', name='Numbre of hurrican (trend)', yaxis='y2'))
+
+    fig.update_layout(
+        title='Correlation between temperature and number of hurricanes (trend)',
+        xaxis_title='year',
+        yaxis_title='temperature mean (°C)',
+        yaxis2=dict(title='numbre of hurrican', overlaying='y', side='right'),
+        legend=dict(x=0, y=-0.25, orientation='h'),
+        height=450
+    )
+    fig.update_xaxes(rangeslider_visible=True)
+    return fig
+
 
 # Layout of the app
 layout = html.Div(children=[
@@ -206,22 +256,46 @@ layout = html.Div(children=[
         dcc.Graph(id='wind-speed-by-year'),
     ], style={'display': 'flex', 'width': '100%'}),
 
-    html.Div(className='separator'),
-    html.H3(children="Graphs", style={'textAlign': 'center'}),
 
-    # Graphiques suivants (un par ligne)
+    html.Hr(),  # Séparation horizontale
+
+    # Section 2: Corrélation
     html.Div(children=[
-        dcc.Graph(id='correlation-graph'),
-    ], style={'width': '100%', 'padding': '0', 'margin': '0'}),
+        html.H2(children="Correlation Temperature / Number of Hurricanes", style={'textAlign': 'center'}),
+        html.Div(children=[
+            # Premier graphique de corrélation (nuage de points)
+            html.Div([
+                dcc.Graph(id='correlation-temp-hurricane-scatter'),
+            ], style={'width': '50%', 'display': 'inline-block'}),
 
+            # Deuxième graphique de corrélation (lignes)
+            html.Div([
+                dcc.Graph(id='correlation-temp-hurricane-line'),
+            ], style={'width': '50%', 'display': 'inline-block'}),
+        ], style={'width': '100%'}),
+    ]),
+
+    html.Hr(),  # Séparation horizontale
+
+    # Section 3: Comparaison AL et EP
     html.Div(children=[
-        dcc.Graph(id='cases-by-year-al-ep'),
-    ], style={'width': '100%', 'padding': '0', 'margin': '0'}),
+        html.H2(children="Comparaison AL and EP", style={'textAlign': 'center'}),
+        html.Div(children=[
+            dcc.Graph(id='cases-by-year-al-ep'),
+        ], style={'width': '100%'}),
+    ]),
 
+    html.Hr(),  # Séparation horizontale
+
+    # Section 4: Tendances
     html.Div(children=[
-        dcc.Graph(id='trends-graph'),
-    ], style={'width': '100%', 'padding': '0', 'margin': '0'}),
+        html.H2(children="Trends", style={'textAlign': 'center'}),
+        html.Div(children=[
+            dcc.Graph(id='trends-graph'),
+        ], style={'width': '100%'}),
+    ]),
 
+    # Footer
     html.Footer(className='home-footer', children=[
         html.Div(className='separator'),
         html.Div(className='container', children=[

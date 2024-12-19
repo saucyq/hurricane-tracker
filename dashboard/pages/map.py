@@ -4,6 +4,7 @@ from dash import html
 from dash.dependencies import Input, Output, State
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.express as px
 
 dash.register_page(__name__, path='/maps')
 
@@ -46,6 +47,15 @@ fig.update_layout(
 begin_date = set_df['DateTime'].dt.year.iloc[0]
 end_date = set_df['DateTime'].dt.year.iloc[-1]
 
+# Création du graphique de densité
+df_counts = df.groupby(['Lat', 'Lon']).size().reset_index(name='count')
+density_fig = px.density_mapbox(df_counts, lat='Lat', lon='Lon', z='count', radius=15,
+                            center=dict(lat=20, lon=-30), zoom=2,
+                            mapbox_style="open-street-map",
+                            #height=900,
+                            title="Map huricans densities")
+                            
+
 layout = html.Div(children=[
     html.H3('Maps', className='text-center mt-3'),
 
@@ -68,6 +78,12 @@ layout = html.Div(children=[
     html.Button("Clear Selection", id="clear-btn", n_clicks=0),
     dcc.Graph(id='map', figure=fig, config={'scrollZoom': True, 'displayModeBar': True}),
     html.Div(id='output-container-date-picker-range'),
+
+    # Conteneur pour le graphique d'évolution du vent
+    html.Div(id='hurricane-wind-graph', children=[]),
+
+    # Graphique de densité
+    dcc.Graph(id='density-map', figure=density_fig, config={'scrollZoom': True, 'displayModeBar': True}),
 
     dcc.Link('Go back to home', href='/'),
 
@@ -112,17 +128,18 @@ def update_output(value, relayoutData):
     return updated_fig
 
 
-# Callback pour afficher le chemin de l'ouragan au clic
+# Callback pour afficher le chemin de l'ouragan et le graphique d'évolution du vent
 @dash.callback(
-    Output('map', 'figure', allow_duplicate=True),
+    [Output('map', 'figure', allow_duplicate=True),
+     Output('hurricane-wind-graph', 'children')],
     [Input('map', 'clickData'),
      Input('date_select', 'value'),
      Input('map', 'relayoutData')],
     prevent_initial_call=True
 )
-def display_path_on_click(clickData, value, relayoutData):
+def display_path_and_wind_graph_on_click(clickData, value, relayoutData):
     if clickData is None:
-        return dash.no_update
+        return dash.no_update, dash.no_update
 
     selected_key = clickData['points'][0]['customdata'][0]
 
@@ -182,7 +199,20 @@ def display_path_on_click(clickData, value, relayoutData):
         coloraxis_showscale=False
     )
 
-    return path_fig
+    # Création du graphique d'évolution du vent
+    wind_graph = dcc.Graph(
+        figure=go.Figure(
+            data=[go.Scatter(x=hurricane_details['DateTime'], y=hurricane_details['Wind'], mode='lines+markers', line=dict(color='blue'))],
+            layout=go.Layout(
+                title=f"Evolution du vent: {hurricane_details['Name'].iloc[0]} ({selected_key})",
+                xaxis_title="Date et Heure",
+                yaxis_title="Vitesse du vent (noeuds)",
+                height=400
+            )
+        )
+    )
+
+    return path_fig, wind_graph
 
 
 # Callback pour effacer les données de clic
