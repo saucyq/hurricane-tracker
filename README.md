@@ -69,8 +69,8 @@ http://127.0.0.1:8050/
 - DB - non-tropical Disturbance not have a closed circulation
   NW34/SE34 : Wind speeds of each quadrant at 34 knots (> 50 mph).
 
-- **Global Temperature Data:** NASA's Goddard Institute for Space Studies (GISS) (https://data.giss.nasa.gov/gistemp/)
-  - This dataset provides reliable global temperature anomalies, suitable for demonstrating the long-term warming trend.
+- **Global Temperature Data:** Kaggle dataset (**https://www.kaggle.com/datasets/berkeleyearth/climate-change-earth-surface-temperature-data**)
+  - This dataset provides reliable global temperature, suitable for demonstrating the long-term warming trend.
 
 ## Interactivity
 
